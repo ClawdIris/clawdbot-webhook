@@ -5,6 +5,21 @@ const PORT = process.env.PORT || 3000;
 // Your verify token - must match what you enter in Meta Developer Dashboard
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'clawdbot_verify_2024';
 
+// Store recent events in memory (last 50)
+const recentEvents = [];
+const MAX_EVENTS = 50;
+
+function logEvent(type, data) {
+  const event = {
+    type,
+    data,
+    timestamp: new Date().toISOString()
+  };
+  recentEvents.unshift(event);
+  if (recentEvents.length > MAX_EVENTS) recentEvents.pop();
+  console.log(`📩 [${type}]`, JSON.stringify(data, null, 2));
+}
+
 app.use(express.json());
 
 // ============================================
@@ -18,9 +33,11 @@ app.get('/webhook', (req, res) => {
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     console.log('✅ Webhook verified successfully!');
+    logEvent('verification', { status: 'success' });
     return res.status(200).send(challenge);
   }
   console.log('❌ Webhook verification failed');
+  logEvent('verification', { status: 'failed', mode, token });
   return res.sendStatus(403);
 });
 
@@ -31,32 +48,30 @@ app.get('/webhook', (req, res) => {
 app.post('/webhook', (req, res) => {
   const body = req.body;
 
-  console.log('📩 Incoming webhook event:', JSON.stringify(body, null, 2));
+  // Log the raw event
+  logEvent('webhook_raw', body);
 
   // Instagram messaging events
   if (body.object === 'instagram') {
     body.entry?.forEach(entry => {
-      // Handle DMs
       if (entry.messaging) {
         entry.messaging.forEach(event => {
           if (event.message) {
-            console.log('💬 New DM from:', event.sender?.id);
-            console.log('   Message:', event.message.text || '[media]');
-            // TODO: Add your ClawdBot AI response logic here
+            logEvent('instagram_dm', {
+              sender: event.sender?.id,
+              message: event.message.text || '[media]',
+              mid: event.message.mid
+            });
           }
         });
       }
 
-      // Handle comments
       if (entry.changes) {
         entry.changes.forEach(change => {
-          if (change.field === 'comments') {
-            console.log('💬 New comment:', change.value);
-            // TODO: Add your comment response logic here
-          }
-          if (change.field === 'mentions') {
-            console.log('📢 New mention:', change.value);
-          }
+          logEvent('instagram_change', {
+            field: change.field,
+            value: change.value
+          });
         });
       }
     });
@@ -68,9 +83,11 @@ app.post('/webhook', (req, res) => {
       if (entry.messaging) {
         entry.messaging.forEach(event => {
           if (event.message) {
-            console.log('💬 New FB Message from:', event.sender?.id);
-            console.log('   Message:', event.message.text || '[media]');
-            // TODO: Add your ClawdBot AI response logic here
+            logEvent('page_message', {
+              sender: event.sender?.id,
+              message: event.message.text || '[media]',
+              mid: event.message.mid
+            });
           }
         });
       }
@@ -81,16 +98,28 @@ app.post('/webhook', (req, res) => {
   res.sendStatus(200);
 });
 
+// ============================================
+// VIEW RECENT EVENTS (for debugging)
+// ============================================
+app.get('/events', (req, res) => {
+  res.json({
+    total: recentEvents.length,
+    server_uptime: process.uptime().toFixed(0) + 's',
+    events: recentEvents
+  });
+});
+
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({
     status: 'ClawdBot Social Manager webhook is running 🤖',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    events_received: recentEvents.length,
+    uptime: process.uptime().toFixed(0) + 's'
   });
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 ClawdBot webhook server running on port ${PORT}`);
-  console.log(`   Webhook URL: https://your-domain.com/webhook`);
   console.log(`   Verify Token: ${VERIFY_TOKEN}`);
 });
