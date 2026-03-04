@@ -65,7 +65,19 @@ function sendReply(recipientId, message) {
 }
 
 function buildReply() {
-  return `Hey! Thanks so much for reaching out to Reel House. We love hearing from couples planning their big day.\n\nWe'd love to learn more about your vision. Could you share a little about your event — when is it, where, and what's most important to you when it comes to your wedding film?\n\nWe're here to make sure every moment is captured the way it deserves to be. 🎬`;
+  return `Hi there! Thank you for reaching out to Reel House Weddings. We're so excited to hear from you.
+
+We specialize in cinematic wedding films that capture every genuine moment of your day — the kind you'll want to relive for years to come.
+
+To make sure we're the perfect fit, we'd love to learn a little more about your wedding. Could you share:
+
+• Your wedding date and location
+• Your partner's name
+• What matters most to you in your wedding film
+
+Once we know more about your vision, we'll send over the details on our collections and find the best way to bring your story to life.
+
+Looking forward to connecting! 🎬`;
 }
 
 app.use(express.json());
